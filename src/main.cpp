@@ -153,15 +153,14 @@ void loop() {
         display(page);
       //  sendDataOverSerial();
 
-    } else { // sequenceer mode
+    } else { // sequencer mode
 
         if (ch1.get_buttonNow() && !button) {
             trig = 1;
             button = true;
             count++;
-            if (count >= SEQ_LNGTH){
-                count=0;
-            }
+            if (count >= SEQ_LNGTH) count=0;
+
             Serial.print(sequence[count].ch1);
             Serial.print(" ");
             Serial.print(sequence[count].ch2);
@@ -171,10 +170,11 @@ void loop() {
         if (!ch1.get_buttonNow() && button) {
             button = false;
         }
-      // ch4.trigger();
+
         ch1.trigger(sequence[count].ch1, trig);
         ch2.trigger(sequence[count].ch2, trig);
         ch3.trigger(sequence[count].ch3, trig);
+      // ch4.trigger();
         trig = 0;
 
         display_seq_3ch(count);
@@ -284,64 +284,6 @@ void display_seq_3ch(int count){
     lcd.setCursor(12, 1);
     lcd.print(ch3.get_MappedPressure());
 }
-
-
-    void display_seq(int count){
-
-        // if (true){
-        //     lcd.setCursor(0, 0);
-        //     lcd.print("1 v");
-        //     lcd.print("     ");
-        //     lcd.setCursor(3, 0);
-        //     lcd.print(sequence[count].ch1);
-        //
-        //     lcd.setCursor(8, 0);
-        //     lcd.print(" p");
-        //     lcd.print("      ");
-        //     lcd.setCursor(10, 0);
-        //     lcd.print(ch1.get_MappedPressure());
-        //
-        //     lcd.setCursor(0, 1);
-        //     lcd.print("2 v");
-        //     lcd.print("     ");
-        //     lcd.setCursor(3, 1);
-        //     lcd.print(sequence[count].ch2);
-        //
-        //     lcd.setCursor(8, 1);
-        //     lcd.print(" p");
-        //     lcd.print("      ");
-        //     lcd.setCursor(10, 1);
-        //     lcd.print(ch2.get_MappedPressure());
-        // }
-        // else{
-            lcd.setCursor(0, 0);
-            lcd.print("3 v");
-            lcd.print("     ");
-            lcd.setCursor(3, 0);
-            lcd.print(sequence[count].ch3);
-
-            lcd.setCursor(8, 0);
-            lcd.print(" p");
-            lcd.print("      ");
-            lcd.setCursor(10, 0);
-            lcd.print(ch3.get_MappedPressure());
-
-            lcd.setCursor(0, 1);
-            lcd.print("4 v");
-            lcd.print("     ");
-            lcd.setCursor(3, 1);
-            lcd.print(ch4.get_MappedPoti());
-
-            lcd.setCursor(8, 1);
-            lcd.print(" p");
-            lcd.print("      ");
-            lcd.setCursor(10, 1);
-            lcd.print(ch4.get_MappedPressure());
-        // }
-
-}
-
-
 
 
 void sendDataOverSerial(){
