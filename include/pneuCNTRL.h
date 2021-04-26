@@ -4,22 +4,29 @@
 #include <Arduino.h>
 #include <Adafruit_ADS1015.h>
 
+void display(int);
+void display_seq_3ch(int);
+void display_seq(int);
+void sendDataOverSerial();
 
 class PneuChannel{
+
   public:
     PneuChannel(int, int, int, int, int );
+    int begin(int, int, int);
     byte operate_manual();
     byte trigger(int,int);
-    int begin(int, int, int);
-    void inflate();
-    void deflate();
-    void stop();
+
+
     int get_Pressure();
-    int get_MappedPressure(int, int);
+    int get_MappedPressure();
     int get_Poti();
-    int get_MappedPoti(int, int);
+    int get_MappedPoti();
     bool get_button();
+    bool get_buttonNow(unsigned long d=30);
     void setInertia(int, int);
+    void setMappingBoundaries(int ,int);
+
 
 
   private:
@@ -38,7 +45,8 @@ class PneuChannel{
     int deflationInertia;
     int potiValMapped;
     int potiVal;
-
+    int pMapMin;
+    int pMapMax;
 
     long lastFill;
     bool inFlate;
@@ -51,11 +59,15 @@ class PneuChannel{
     bool lastButtonState;
     bool buttonPressed;
 
-    float filter(float, float, float);
+    void emergency_watchdog(int);
+    void inflate();
+    void deflate();
+    void stop();
+    void readButton(unsigned long);
     int readPressure();
     int readPotentiometer();
-    void readButton(unsigned long);
-    void emergency_watchdog(int);
+    float filter(float, float, float);
+    int value_mapper (int, int, int);
 
   };
 #endif
