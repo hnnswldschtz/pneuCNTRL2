@@ -2,9 +2,9 @@
 
 //public methods
 
-PneuChannel::PneuChannel(int inf_pin, int def_pin, int adc_port, int pot_pin, int button_pin){
+ValveChannel::ValveChannel(int inf_pin, int def_pin, int adc_port, int pot_pin, int button_pin){
     #define DEBOUNCE_DELAY 30UL
-    #define TIMEOUT 8000UL
+    #define TIMEOUT 10000UL
 
     //Serial.begin(9600);
     infValvePin = inf_pin;
@@ -17,13 +17,13 @@ PneuChannel::PneuChannel(int inf_pin, int def_pin, int adc_port, int pot_pin, in
     pMapMax = 1510;
 }
 
-int PneuChannel::begin(int min_pressure, int max_pressure, int safety_stop){
+int ValveChannel::begin(int min_pressure, int max_pressure, int safety_stop){
     pinMode(infValvePin,OUTPUT);
     pinMode(defValvePin,OUTPUT);
     pinMode(buttonPin,INPUT_PULLUP);
 
     ads.setGain(GAIN_TWO);
-    ads.begin();
+    ads.begin();// put i2c adress here.
     minPressure = min_pressure;
     maxPressure = max_pressure;
     safetyStop = safety_stop;
@@ -40,18 +40,18 @@ int PneuChannel::begin(int min_pressure, int max_pressure, int safety_stop){
     return 0;
 }
 
-void PneuChannel::setInertia(int infIn=1000, int defIn=500){
+void ValveChannel::setInertia(int infIn=1000, int defIn=500){
   // change hysteresis boundarys according to inflation and defltion behaviour
   inflationInertia = infIn;
   deflationInertia = defIn;
 }
 
-void PneuChannel::setMappingBoundaries(int _mapMin, int _mapMax){
+void ValveChannel::setMappingBoundaries(int _mapMin, int _mapMax){
   pMapMin = _mapMin;
   pMapMax = _mapMax;
 }
 
-byte PneuChannel::operate_manual(){
+byte ValveChannel::operate_manual(){
     readPressure();
     readPotentiometer();
     readButton(DEBOUNCE_DELAY);
@@ -85,82 +85,145 @@ byte PneuChannel::operate_manual(){
   return 0;
 }
 
-byte PneuChannel::trigger(int p_set, int trig){
+byte ValveChannel::trigger(int p_set, int trig){
     readPressure();
     //readPotentiometer();
     //readButton(DEBOUNCE_DELAY);
     emergency_watchdog(safetyStop);
-    int mapped_p_set = int(map(p_set,pMapMin,pMapMax,maxPressure,minPressure));
+    int p_set_mapped_to_raw_p = mapToRawP(p_set); // we calculate internally with the raw input value range from adc
+
     if (millis()-lastFill>=0){
 
         lastFill=millis();
-        if (pressure < mapped_p_set && trig == 1) {
-          Serial.println("in");
+        if (old_p_set!=p_set_mapped_to_raw_p&&(pressure < p_set_mapped_to_raw_p && trig == 1)) {
+            deFlate = false;
+            stop();
+            // Serial.print("in, ");
+            // Serial.print("p_set: ");
+            // Serial.print(p_set);
+            // Serial.print(", p_set: ");
+            // Serial.print(p_set_mapped_to_raw_p);
+            Serial.print(", pressure: ");
+            Serial.println(pressure);
             inflate();
             inFlate = true;
             inFlate_time = millis();
+            old_p_set=p_set_mapped_to_raw_p;
         }
-        else if (pressure > (mapped_p_set-inflationInertia) && inFlate){
+        else if (pressure > (p_set_mapped_to_raw_p-calcInflationInertia(pressure)) && inFlate){
+
+            // Serial.print("at ");
+            // Serial.print(pressure);
+            // Serial.print(" inflation ");
             stop();
+
             inFlate = false;
         }
-        else if (pressure > mapped_p_set && trig == 1) {
-            Serial.println("out");
+        else if (old_p_set!=p_set_mapped_to_raw_p&&(pressure > p_set_mapped_to_raw_p && trig == 1)) {
+            inFlate = false;
+            stop();
+            // Serial.print("out, ");
+            // Serial.print("p_set: ");
+            // Serial.print(p_set);
+            // Serial.print(", p_set: ");
+            // Serial.print(p_set_mapped_to_raw_p);
+            // Serial.print(", pressure: ");
+            // Serial.println(pressure);
             deflate();
             deFlate = true;
             deFlate_time = millis();
+            old_p_set=p_set_mapped_to_raw_p;
         }
-        else if (pressure < (mapped_p_set+deflationInertia) && deFlate){
+        else if (pressure < (p_set_mapped_to_raw_p+deflationInertia) && deFlate){
+          // Serial.print("at ");
+          // Serial.print(pressure);
+          // Serial.print(" deflation ");
             stop();
             deFlate = false;
         }
     }
-  if (inFlate&&(millis() - inFlate_time>TIMEOUT)) stop();
-  if (deFlate&&(millis() - deFlate_time>TIMEOUT)) stop();
+    //timeout if inflation never reaches top
+    if (inFlate&&(millis() - inFlate_time>TIMEOUT)) {
+        Serial.print ("timeout ");
+        inFlate=false;
+        stop();
+    }
+    //timeout if inflation never reaches bottom
+    if (deFlate&&(millis() - deFlate_time>TIMEOUT)) {
+        Serial.print ("timeout ");
+        deFlate=false;
+        stop();
+    }
+
+    /*REFILL i pressure fals lower then calculated offset to set pressure
+    might probably collide with timeout inflation control
+    */
+    if ((!inFlate&&!deFlate)&&(pressure < (p_set_mapped_to_raw_p-calcRefillOffset(pressure)) && trig == 0)) {
+       Serial.print("Refill offset: ");
+       Serial.println(calcRefillOffset(pressure));
+      // Serial.println(" deflation ");
+        deFlate = false;
+        inflate();
+        inFlate = true;
+        inFlate_time = millis();
+    }
 
   return 0;
 }
+int ValveChannel::mapToRawP(int p){ // maps pressure setting from GUI land to internal adc raw value
+  return int(map(p,pMapMin,pMapMax,minPressure,maxPressure));
+}
+int ValveChannel::calcRefillOffset(int p){
+  return (p-minPressure)/10;
+}
 
-int PneuChannel::get_MappedPressure(){
+int ValveChannel::calcInflationInertia(int p){
+  return (p-minPressure)/20;
+}
+
+int ValveChannel::get_MappedPressure(){ // maps pressuref from internal adc raw value to GUI land pressure range
     return int(map(pressure,minPressure,maxPressure,pMapMin,pMapMax));
 }
-int PneuChannel::get_Pressure(){
+int ValveChannel::get_Pressure(){
     return pressure;
 }
 
-int PneuChannel::get_MappedPoti(){
+int ValveChannel::get_MappedPoti(){
     return int(map(potiValMapped,minPressure,maxPressure,pMapMin,pMapMax));
 }
 
-int PneuChannel::get_Poti(){
+int ValveChannel::get_Poti(){
     return potiValMapped;
 }
 
-bool PneuChannel::get_button(){
+bool ValveChannel::get_button(){
   return buttonPressed;
 }
-bool PneuChannel::get_buttonNow(unsigned long d ){
+bool ValveChannel::get_buttonNow(unsigned long d ){
   readButton(d);
   return buttonPressed;
+}
+bool ValveChannel::get_state(){
+  return inFlate==true;
 }
 
 
 // private methods
 
-  int PneuChannel::readPressure(){
+  int ValveChannel::readPressure(){
       //int adc = ads.readADC_SingleEnded(adcPort);
       //pressure = filter(adc, 0.3, pressure);
       pressure = ads.readADC_SingleEnded(adcPort);
       return pressure;
   }
 
-  int PneuChannel::readPotentiometer(){
+  int ValveChannel::readPotentiometer(){
       potiVal = filter(analogRead(potPin), 0.3, potiVal); //check for analog input 1...4
       potiValMapped = int(map(potiVal,0,1023,maxPressure,minPressure));///potiToPressureFactor;
       return potiValMapped;
   }
 
-  void PneuChannel::readButton(unsigned long debounce_delay){
+  void ValveChannel::readButton(unsigned long debounce_delay){
       buttonState = digitalRead(buttonPin);
       if (buttonState != lastFlickerState) {
           lastDebounceTime = millis();
@@ -174,27 +237,28 @@ bool PneuChannel::get_buttonNow(unsigned long d ){
   }
 
 
-  void PneuChannel::inflate(){
+  void ValveChannel::inflate(){
       digitalWrite(infValvePin, HIGH);
       digitalWrite(defValvePin, LOW);
   }
 
-  void PneuChannel::deflate(){
+  void ValveChannel::deflate(){
       digitalWrite(infValvePin, LOW);
       digitalWrite(defValvePin, HIGH);
   }
 
-  void PneuChannel::stop(){
+  void ValveChannel::stop(){
+      Serial.println("stop called");
       digitalWrite(infValvePin, LOW);
       digitalWrite(defValvePin, LOW);
   }
 
-  void PneuChannel::emergency_watchdog(int maxP){
+  void ValveChannel::emergency_watchdog(int maxP){
     if (readPressure()>maxP) stop();
   }
 
 
-float PneuChannel::filter(float rawValue, float weight, float lastValue){
+float ValveChannel::filter(float rawValue, float weight, float lastValue){
   //weighted average (IIR) filter (also accepts integers)
     return  weight * rawValue + (1.0 - weight) * lastValue;
 }
