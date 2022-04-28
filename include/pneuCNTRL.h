@@ -2,14 +2,24 @@
 #define PNEU
 
 #include <Arduino.h>
+#include <Wire.h>
 #include <Adafruit_ADS1015.h>
 #include <LiquidCrystal_I2C.h>
+#include <Adafruit_MCP4728.h>
+#include "Channels.h"
+#include <Adafruit_NeoPixel.h>
+//#include <LiquidCrystalFast.h>
+#include <ADS1115_lite.h>
+#include "Button.h"
+
+
 
 
 void display(int);
 void display_seq_4ch(int);
 void display_seq(int);
-void sendDataOverSerial();
+void sendDataOverSerial(boolean);
+void setFlagHandler();
 
 
 struct DATA_P {
@@ -17,155 +27,62 @@ struct DATA_P {
   int ch2_val;
   int ch3_val;
   int ch4_val;
+  int ch5_val;
+  int ch6_val;
+  int ch7_val;
 };
 
-#define valve_A1 4
-#define valve_A2 8
-#define valve_B3 5
-#define valve_B4 10
-#define valve_C5 6
-#define valve_C6 11
-#define valve_D7 7
-#define valve_D8 12
+struct SEQ_CH {
+  int s1_val;
+  int s2_val;
+  int s3_val;
+  int s4_val;
+  int s5_val;
+  int s6_val;
+  int s7_val;
+};
+
+const int PCB_PORT1  =  3;
+const int PCB_PORT2  =  4;
+const int PCB_PORT3  =  5;
+const int PCB_PORT4  =  6;
+const int PCB_PORT5  =  20;
+const int PCB_PORT6  =  21;
+const int PCB_PORT7  =  22;
+const int PCB_PORT8  =  23;
+
+
+#define valve_A1 PCB_PORT4
+#define valve_A2 PCB_PORT5
+#define valve_B3 PCB_PORT3
+#define valve_B4 PCB_PORT6
+#define valve_C5 PCB_PORT2
+#define valve_C6 PCB_PORT7
+#define valve_D7 PCB_PORT1
+#define valve_D8 PCB_PORT8
+
+
+#define POTI_1 A0
+#define POTI_2 A1
+#define POTI_3 A2
+#define POTI_4 A3
+
+#define BUTTON_1 24
+#define BUTTON_2 25
+#define BUTTON_3 26
+#define BUTTON_4 27
+#define BUTTON_SWITCH 7
+/*LED OF SWITCH*/
+//#define SWITCH_LED 2
 
 const int SENSE_PIN_1 = 0;
 const int SENSE_PIN_2 = 1;
 const int SENSE_PIN_3 = 2;
 const int SENSE_PIN_4 = 3;
 
-class ValveChannel{
-
-  public:
-    ValveChannel(int, int, int, int, int );
-    int begin(int, int, int);
-    byte operate_manual();
-    byte trigger(int,int);
+// NeoPixel setup
+#define NEO_SWITCH_PIN 2
+#define NEO_SWITCH_NUM_PIXELS 5 // how many leds in switchbox?
 
 
-    int get_Pressure();
-    int get_MappedPressure();
-    int mapToRawP(int p);
-    int calcRefillOffset(int);
-    int calcInflationInertia(int);
-    bool get_state();
-    int get_Poti();
-    int get_MappedPoti();
-    bool get_button();
-    bool get_buttonNow(unsigned long d=30);
-    void setInertia(int, int);
-    void setMappingBoundaries(int ,int);
-
-
-
-  private:
-    Adafruit_ADS1115 ads;
-    int infValvePin;
-    int defValvePin;
-    byte adcPort;
-    int potPin;
-    int buttonPin;
-    int pressure;
-    int old_p_set;
-
-    int minPressure;
-    int maxPressure;
-    int safetyStop;
-    int inflationInertia;
-    int deflationInertia;
-    int potiValMapped;
-    int potiVal;
-    int pMapMin;
-    int pMapMax;
-
-    long lastFill;
-    bool inFlate;
-    bool deFlate;
-    long inFlate_time;
-    long deFlate_time;
-    long lastDebounceTime;
-    bool lastFlickerState;
-    bool buttonState;
-    bool lastButtonState;
-    bool buttonPressed;
-
-
-    void emergency_watchdog(int);
-    void inflate();
-    void deflate();
-    void stop();
-    void readButton(unsigned long);
-    int readPressure();
-    int readPotentiometer();
-    float filter(float, float, float);
-    int value_mapper (int, int, int);
-
-  };
-
-  class ProportionalChannel{
-
-    public:
-      ProportionalChannel(int, int, int, int, int );
-      int begin(int, int, int);
-      byte operate_manual();
-      byte trigger(int,int);
-
-
-      int get_Pressure();
-      int get_MappedPressure();
-      int mapToRawP(int p);
-      int calcRefillOffset(int);
-      int calcInflationInertia(int);
-      bool get_state();
-      int get_Poti();
-      int get_MappedPoti();
-      bool get_button();
-      bool get_buttonNow(unsigned long d=30);
-      void setInertia(int, int);
-      void setMappingBoundaries(int ,int);
-
-
-
-    private:
-      Adafruit_ADS1115 ads;
-      int infValvePin;
-      int defValvePin;
-      byte adcPort;
-      int potPin;
-      int buttonPin;
-      int pressure;
-      int old_p_set;
-
-      int minPressure;
-      int maxPressure;
-      int safetyStop;
-      int inflationInertia;
-      int deflationInertia;
-      int potiValMapped;
-      int potiVal;
-      int pMapMin;
-      int pMapMax;
-
-      long lastFill;
-      bool inFlate;
-      bool deFlate;
-      long inFlate_time;
-      long deFlate_time;
-      long lastDebounceTime;
-      bool lastFlickerState;
-      bool buttonState;
-      bool lastButtonState;
-      bool buttonPressed;
-
-
-      void emergency_watchdog(int);
-      void inflate();
-      void deflate();
-      void stop();
-      void readButton(unsigned long);
-      int readPressure();
-      int readPotentiometer();
-      float filter(float, float, float);
-      int value_mapper (int, int, int);
-
-    };
 #endif

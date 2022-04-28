@@ -1,29 +1,36 @@
 #include "PneuCNTRL.h"
+#include "Channels.h"
 
 //public methods
 
-ValveChannel::ValveChannel(int inf_pin, int def_pin, int adc_port, int pot_pin, int button_pin){
+//ValveChannel::ValveChannel(int inf_pin, int def_pin, Adafruit_ADS1115 * _adc, int _adc_ch, int pot_pin, int button_pin){
+ValveChannel::ValveChannel(int inf_pin, int def_pin, int pot_pin, int button_pin){
+
     #define DEBOUNCE_DELAY 30UL
-    #define TIMEOUT 10000UL
+
 
     //Serial.begin(9600);
     infValvePin = inf_pin;
     defValvePin = def_pin;
-    adcPort = adc_port;
     potPin = pot_pin;
     buttonPin = button_pin;
-    Adafruit_ADS1115 ads; // instantiate out of all scopes
-    pMapMin = 1000;
-    pMapMax = 1510;
+
+    //----default global gui mapping values. std: 0-100
+    GUI_pMapMin = 0;
+    GUI_pMapMax = 100;
+
+
 }
 
-int ValveChannel::begin(int min_pressure, int max_pressure, int safety_stop){
+int ValveChannel::begin(int min_pressure, int max_pressure, int safety_stop, long _timeout){
     pinMode(infValvePin,OUTPUT);
     pinMode(defValvePin,OUTPUT);
+    digitalWrite(infValvePin,LOW);
+    digitalWrite(defValvePin,LOW);
     pinMode(buttonPin,INPUT_PULLUP);
 
-    ads.setGain(GAIN_TWO);
-    ads.begin();// put i2c adress here.
+
+    time_out = _timeout;
     minPressure = min_pressure;
     maxPressure = max_pressure;
     safetyStop = safety_stop;
@@ -35,27 +42,44 @@ int ValveChannel::begin(int min_pressure, int max_pressure, int safety_stop){
     stop();
 
     //Serial.print("Getting single-ended readings from AIN ");
-    //Serial.println (adcPort);
+    //Serial.println (adc_ch);
 
     return 0;
 }
 
-void ValveChannel::setInertia(int infIn=1000, int defIn=500){
+#if ADS_L
+  void ValveChannel::setAdc(ADS1115_lite *_adc, int _adc_ch)
+  {
+    adc = _adc;
+    adc_ch = _adc_ch;
+  }
+#else
+  void ValveChannel::setAdc(Adafruit_ADS1115 *_adc, int _adc_ch)
+  {
+    adc = _adc;
+    adc_ch = _adc_ch;
+  }
+#endif
+
+void ValveChannel::setInertia(int infIn = 1000, int defIn = 500){
   // change hysteresis boundarys according to inflation and defltion behaviour
   inflationInertia = infIn;
   deflationInertia = defIn;
 }
 
-void ValveChannel::setMappingBoundaries(int _mapMin, int _mapMax){
-  pMapMin = _mapMin;
-  pMapMax = _mapMax;
+void ValveChannel::setGuiMappingRange(int _mapMin, int _mapMax){
+  GUI_pMapMin = _mapMin;
+  GUI_pMapMax = _mapMax;
 }
 
 byte ValveChannel::operate_manual(){
     readPressure();
+    emergency_watchdog(safetyStop);
+    mapPressureToGui();
+
     readPotentiometer();
     readButton(DEBOUNCE_DELAY);
-    emergency_watchdog(safetyStop);
+
 
     if (millis()-lastFill>=0){
 
@@ -79,22 +103,24 @@ byte ValveChannel::operate_manual(){
             deFlate = false;
         }
     }
-  if (inFlate&&(millis() - inFlate_time>TIMEOUT)) stop();
-  if (deFlate&&(millis() - deFlate_time>TIMEOUT)) stop();
+  if (inFlate&&(millis() - inFlate_time > time_out)) stop();
+  if (deFlate&&(millis() - deFlate_time > time_out)) stop();
 
   return 0;
 }
 
 byte ValveChannel::trigger(int p_set, int trig){
+
     readPressure();
-    //readPotentiometer();
-    //readButton(DEBOUNCE_DELAY);
     emergency_watchdog(safetyStop);
-    int p_set_mapped_to_raw_p = mapToRawP(p_set); // we calculate internally with the raw input value range from adc
+    mapPressureToGui();
+
+    int p_set_mapped_to_raw_p = mapToRawP(p_set); // we work internally with the raw input value range from adc
 
     if (millis()-lastFill>=0){
 
         lastFill=millis();
+        // -------start inflating
         if (old_p_set!=p_set_mapped_to_raw_p&&(pressure < p_set_mapped_to_raw_p && trig == 1)) {
             deFlate = false;
             stop();
@@ -103,13 +129,14 @@ byte ValveChannel::trigger(int p_set, int trig){
             // Serial.print(p_set);
             // Serial.print(", p_set: ");
             // Serial.print(p_set_mapped_to_raw_p);
-            Serial.print(", pressure: ");
-            Serial.println(pressure);
+            // Serial.print(", pressure: ");
+            // Serial.println(pressure);
             inflate();
             inFlate = true;
             inFlate_time = millis();
             old_p_set=p_set_mapped_to_raw_p;
         }
+        // ------ stop inflating
         else if (pressure > (p_set_mapped_to_raw_p-calcInflationInertia(pressure)) && inFlate){
 
             // Serial.print("at ");
@@ -118,7 +145,7 @@ byte ValveChannel::trigger(int p_set, int trig){
             stop();
 
             inFlate = false;
-        }
+        } // -------start deflating
         else if (old_p_set!=p_set_mapped_to_raw_p&&(pressure > p_set_mapped_to_raw_p && trig == 1)) {
             inFlate = false;
             stop();
@@ -134,23 +161,26 @@ byte ValveChannel::trigger(int p_set, int trig){
             deFlate_time = millis();
             old_p_set=p_set_mapped_to_raw_p;
         }
-        else if (pressure < (p_set_mapped_to_raw_p+deflationInertia) && deFlate){
+
+        //------ stop deflating
+        else if (pressure < (p_set_mapped_to_raw_p-deflationInertia) && deFlate ){
+
           // Serial.print("at ");
           // Serial.print(pressure);
           // Serial.print(" deflation ");
-            stop();
+          if (p_set_mapped_to_raw_p != 0) stop(); // dont close valve when val is set to zero
             deFlate = false;
         }
     }
     //timeout if inflation never reaches top
-    if (inFlate&&(millis() - inFlate_time>TIMEOUT)) {
-        Serial.print ("timeout ");
+    if (inFlate && (millis() - inFlate_time > time_out)) {
+        Serial.println ("timeout_inF ");
         inFlate=false;
         stop();
     }
     //timeout if inflation never reaches bottom
-    if (deFlate&&(millis() - deFlate_time>TIMEOUT)) {
-        Serial.print ("timeout ");
+    if (deFlate&&(millis() - deFlate_time>time_out)) {
+        Serial.println ("timeout_deF ");
         deFlate=false;
         stop();
     }
@@ -158,38 +188,57 @@ byte ValveChannel::trigger(int p_set, int trig){
     /*REFILL i pressure fals lower then calculated offset to set pressure
     might probably collide with timeout inflation control
     */
-    if ((!inFlate&&!deFlate)&&(pressure < (p_set_mapped_to_raw_p-calcRefillOffset(pressure)) && trig == 0)) {
-       Serial.print("Refill offset: ");
-       Serial.println(calcRefillOffset(pressure));
-      // Serial.println(" deflation ");
-        deFlate = false;
-        inflate();
-        inFlate = true;
-        inFlate_time = millis();
+    if ((!inFlate&&!deFlate)&&(pressure < (p_set_mapped_to_raw_p-calcRefillOffset(pressure)) && trig == 0)){
+      //if (millis()-deFlate_time>100){
+         // Serial.print("Refill offset: ");
+         // Serial.println(calcRefillOffset(pressure));
+        // Serial.println(" deflation ");
+          deFlate = false;
+          inflate();
+          inFlate = true;
+          inFlate_time = millis();
+        //}
     }
+
+    // if ((!inFlate&&!deFlate)&&(pressure > (p_set_mapped_to_raw_p+calcRefillOffset(pressure)) && trig == 0)) {
+    //   if (millis()-inFlate_time>500){
+    //    Serial.print("Refill offset: ");
+    //    Serial.println(calcRefillOffset(pressure));
+    //   // Serial.println(" deflation ");
+    //     inFlate = false;
+    //     deflate();
+    //     deFlate = true;
+    //     deFlate_time = millis();
+    //   }
+    // }
 
   return 0;
 }
 int ValveChannel::mapToRawP(int p){ // maps pressure setting from GUI land to internal adc raw value
-  return int(map(p,pMapMin,pMapMax,minPressure,maxPressure));
+  return int(map(p,GUI_pMapMin,GUI_pMapMax,minPressure,maxPressure));
 }
 int ValveChannel::calcRefillOffset(int p){
-  return (p-minPressure)/10;
+  return (p-minPressure)/10; // add some hysteresis
 }
 
 int ValveChannel::calcInflationInertia(int p){
   return (p-minPressure)/20;
 }
+void ValveChannel::mapPressureToGui(){ // maps pressuref from internal adc raw value to GUI land pressure range
+    mappedPressure = int(map(pressure,minPressure,maxPressure,GUI_pMapMin,GUI_pMapMax));
+}
 
 int ValveChannel::get_MappedPressure(){ // maps pressuref from internal adc raw value to GUI land pressure range
-    return int(map(pressure,minPressure,maxPressure,pMapMin,pMapMax));
+  return mappedPressure;
 }
+
 int ValveChannel::get_Pressure(){
+    //pressure = adc->readADC_SingleEnded(adc_ch);
     return pressure;
 }
 
 int ValveChannel::get_MappedPoti(){
-    return int(map(potiValMapped,minPressure,maxPressure,pMapMin,pMapMax));
+    return int(map(potiValMapped,minPressure,maxPressure,GUI_pMapMin,GUI_pMapMax));
 }
 
 int ValveChannel::get_Poti(){
@@ -208,20 +257,36 @@ bool ValveChannel::get_state(){
 }
 
 
+
 // private methods
 
   int ValveChannel::readPressure(){
-      //int adc = ads.readADC_SingleEnded(adcPort);
+      //int adc = adc->readADC_SingleEnded(adc_ch);
       //pressure = filter(adc, 0.3, pressure);
-      pressure = ads.readADC_SingleEnded(adcPort);
+      //pressure = adc->readADC_SingleEnded(adc_ch);
+
+      #if ADS_L
+          starttime = micros();
+          adc->setMux(adc_ch); //Set single ended mode between AIN0 and GND
+          adc->triggerConversion(); //Start a conversion.  This immediatly returns
+          pressure =  adc->getConversion(); //This polls the ADS1115 and wait for conversion to finish, THEN returns the value
+          endtime = micros();
+          Serial.print("Convcompl: ");
+          Serial.print(pressure); Serial.print(",  ");
+          Serial.print(endtime - starttime);
+          Serial.println("us");
+      #else
+          pressure = adc->readADC_SingleEnded(adc_ch);
+      #endif
+
       return pressure;
   }
 
-  int ValveChannel::readPotentiometer(){
-      potiVal = filter(analogRead(potPin), 0.3, potiVal); //check for analog input 1...4
-      potiValMapped = int(map(potiVal,0,1023,maxPressure,minPressure));///potiToPressureFactor;
-      return potiValMapped;
-  }
+    int ValveChannel::readPotentiometer(){
+        potiVal = filter(analogRead(potPin), 0.3, potiVal); //check for analog input 1...4
+        potiValMapped = int(map(potiVal,0,1023,maxPressure,minPressure));///potiToPressureFactor;
+        return potiValMapped;
+    }
 
   void ValveChannel::readButton(unsigned long debounce_delay){
       buttonState = digitalRead(buttonPin);
@@ -248,13 +313,13 @@ bool ValveChannel::get_state(){
   }
 
   void ValveChannel::stop(){
-      Serial.println("stop called");
+      //Serial.println("stop called");
       digitalWrite(infValvePin, LOW);
       digitalWrite(defValvePin, LOW);
   }
 
   void ValveChannel::emergency_watchdog(int maxP){
-    if (readPressure()>maxP) stop();
+    if (pressure>maxP) stop();
   }
 
 
