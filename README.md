@@ -1,13 +1,15 @@
 # pneuCNTRL2 Firmware
-4 channel pressure controlled inlation/deflation system for the _Fludic Data_ Haptics experiment
+8 channel pressure controlled inlation/deflation system for the inflatable haptics experiments
 
 Setup:
 
-- Arduino Mega
-- 12 ch tip120 setup
-- ads1115 adc
+- custom PCB released as openhardware under cern-ohl-w v2 license 
+- based on teensy3.2
+- ads1115 for ADC
+- MCP4728 for DAC
 - 4x festo 571482 pressure sensors
-- 4x smc 5/3 electrc valves
+- 4x smc 5/3 electric valves
+- 4x Festo proportional piezo valves (VEAB-L-26-D7-Q4-V1-1R1)
 - LCD i2c display
 
 libraries used:
@@ -16,4 +18,4 @@ Adafruit_MCP4728: https://github.com/adafruit/Adafruit_MCP4728
 Adafruit_NeoPixel: https://github.com/adafruit/Adafruit_NeoPixel
 LiquidCrystal_I2C: https://github.com/johnrickman/LiquidCrystal_I2C -> this gives a massive delay when used! maybe avoid!!
 Bauhaus-University Weimar \
-hnns 2021
+hnns 2022
