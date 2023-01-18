@@ -12,6 +12,8 @@ Setup:
 - 4x Festo proportional piezo valves (VEAB-L-26-D7-Q4-V1-1R1)
 - LCD i2c display
 
+<img width="652" alt="pneuCNTRL" src="https://user-images.githubusercontent.com/18725938/213315680-d9077383-0f79-4ea7-a215-53ef868a316f.png">
+
 libraries used:
 ADS1115_lite: https://github.com/terryjmyers/ADS1115-Lite
 Adafruit_MCP4728: https://github.com/adafruit/Adafruit_MCP4728
