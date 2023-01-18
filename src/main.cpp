@@ -7,7 +7,7 @@ pneuCNTRlbox Firmware.
 //#include <ADS1115_lite.h>
 
 // either manual mode or sequence mode
-#define MANUAL_MODE false
+#define MANUAL_MODE true
 #define ADS_L false
 
 LiquidCrystal_I2C lcd(0x27, 16, 2); // Set the LCD address to 0x27 for a 16 chars and 2 line display
