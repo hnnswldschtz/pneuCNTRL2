@@ -5,10 +5,10 @@ Setup:
 
 - custom PCB released as openhardware under cern-ohl-w v2 license 
 - based on teensy3.2
-- ads1115 for adc
-- 
+- ads1115 for ADC
+- MCP4728 for DAC
 - 4x festo 571482 pressure sensors
-- 4x smc 5/3 electrc valves
+- 4x smc 5/3 electric valves
 - 4x Festo proportional piezo valves (VEAB-L-26-D7-Q4-V1-1R1)
 - LCD i2c display
 
