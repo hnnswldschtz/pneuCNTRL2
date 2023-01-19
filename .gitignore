@@ -1,3 +1,7 @@
 .pio
 .clang_complete
 .gcc-flags.json
+.old_src
+.test
+.lib
+.backups
