@@ -23,7 +23,8 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 
 #include <Arduino.h>
 #include <Wire.h>
-#include <Adafruit_ADS1015.h>
+//#include <Adafruit_ADS1015.h>
+#include <Adafruit_ADS1X15.h>
 #include <LiquidCrystal_I2C.h>
 #include <Adafruit_MCP4728.h>
 #include "Channels.h"
@@ -104,5 +105,6 @@ const int SENSE_PIN_4 = 3;
 #define NEO_SWITCH_PIN 2
 #define NEO_SWITCH_NUM_PIXELS 5 // how many leds in switchbox?
 
+ 
 
 #endif

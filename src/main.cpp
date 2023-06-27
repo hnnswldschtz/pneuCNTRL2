@@ -23,7 +23,7 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 //#include <ADS1115_lite.h>
 
 // either manual mode or sequence mode
-#define MANUAL_MODE true
+#define MANUAL_MODE false
 #define ADS_L false
 
 LiquidCrystal_I2C lcd(0x27, 16, 2); // Set the LCD address to 0x27 for a 16 chars and 2 line display
@@ -33,8 +33,8 @@ Adafruit_NeoPixel switch_neo_pixels(NEO_SWITCH_NUM_PIXELS, NEO_SWITCH_PIN, NEO_G
   ADS1115_lite Psens_adc(0x49);
   ADS1115_lite PV_adc(0x48);
 #else
-  Adafruit_ADS1115 Psens_adc(0x49); // instance of ads1115 Psens_adc  out of all scopes
-  Adafruit_ADS1115 PV_adc(0x48);
+  Adafruit_ADS1115 Psens_adc; // instance of ads1115 Psens_adc  out of all scopes
+  Adafruit_ADS1115 PV_adc;
 #endif
 Adafruit_MCP4728 PV_dac;
 
@@ -196,7 +196,7 @@ void setup() {
     Serial.begin(115200);
     delay(1500);
     Serial.println("Hello, I'm here and ready to accept instructions");
-    lcd.begin();
+    lcd.init();
     lcd.backlight();// Turn on the backlight
 
     #if ADS_L
@@ -206,10 +206,10 @@ void setup() {
       PV_adc.setSampleRate(ADS1115_REG_CONFIG_DR_860SPS);
     #else
       Psens_adc.setGain(GAIN_TWO); // 2,048V Max. set to two or higher because of spte sensors 1bar ~ 0,5V
-      Psens_adc.begin();
+      Psens_adc.begin(0x49);
 
       PV_adc.setGain(GAIN_ONE); // 4,096V max. set to one because of spte sensors 1bar ~ 5V / 2,5V
-      PV_adc.begin();
+      PV_adc.begin(0x48);
     #endif
 
 
@@ -423,60 +423,12 @@ void loop() {
       }
     }//digitalWrite(SWITCH_LED, LOW); // switch of LED
 
-  //PV TEST CODE -> remove when done.
-    // if(millis()-lastLast > 5000 && showIt == true){
-    //   showIt = false;
-    //   // Serial.print("set point: ");
-    //   // Serial.println(ch5P.readRawPressure());
-    //   Serial.print("    1 set: ");
-    //   Serial.println(sequence[count].ch1_val);
-    //
-    //   Serial.print(" 1 raw: ");
-    //   Serial.println(ch1.get_Pressure());
-    //
-    //   Serial.print(" 1 mapped: ");
-    //   Serial.println(ch1.get_MappedPressure());
-    //
-    //   Serial.print("    5 raw: ");
-    //   Serial.println(ch5P.readRawPressure());
-    //
-    //   Serial.print(" 5 mapped: ");
-    //   Serial.println(ch5P.get_MappedPressure());
-    //
-    //   Serial.print("    6 raw: ");
-    //   Serial.println(ch6P.readRawPressure());
-    //
-    //   Serial.print(" 6 mapped: ");
-    //   Serial.println(ch6P.get_MappedPressure());
-    //
-    //   Serial.print("    7 raw: ");
-    //   Serial.println(ch7P.readRawPressure());
-    //
-    //   Serial.print(" 7 mapped: ");
-    //   Serial.println(ch7P.get_MappedPressure());
-    //   // Serial.print("ch2 wert: ");
-    //   // Serial.println(ch6P.get_MappedPressure());
-    //   //
-    //   // Serial.print("ch3 wert: ");
-    //   // Serial.println(ch7P.get_MappedPressure());
-    //   Serial.println("");
-    //
-    //   // ch6P.goToPressure(50);
-    //   // Serial.print("soll wert: ");
-    //   // Serial.println(prsssr);
-    //   // prsssr+= 100;
-    //   // if(prsssr > 1200) prsssr = 0;
-    //
-    // }
-
 }
 
 /*
-HELPER Functions
-Display
-serial
-
-
+  HELPER Functions
+  Display
+  serial
 */
 
 /* display fundtion for manual mode*/

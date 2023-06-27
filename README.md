@@ -3,7 +3,7 @@
 
 Setup:
 
-- custom PCB released as openhardware under cern-ohl-w v2 license 
+- custom PCB released as openhardware under cern-ohl-w v2 license
 - based on teensy3.2
 - ads1115 for ADC
 - MCP4728 for DAC
@@ -19,5 +19,7 @@ ADS1115_lite: https://github.com/terryjmyers/ADS1115-Lite
 Adafruit_MCP4728: https://github.com/adafruit/Adafruit_MCP4728
 Adafruit_NeoPixel: https://github.com/adafruit/Adafruit_NeoPixel
 LiquidCrystal_I2C: https://github.com/johnrickman/LiquidCrystal_I2C -> this gives a massive delay when used! maybe avoid!!
+Adafruit_ADS1015: https://github.com/adafruit/Adafruit_ADS1X15
+
 Bauhaus-University Weimar \
 hnns 2022
