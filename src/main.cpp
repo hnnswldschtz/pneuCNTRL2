@@ -184,8 +184,9 @@ const long TIMEOUT = 60000;
 const int BIGBAG_SAFETY_PRESSURE_LIMIT = 17500; //where safety kicks in
 const int FLUTE_SAFETY_PRESSURE_LIMIT = 17500;//18700; //where safety kicks in
 const int BAGUETTE_SAFETY_PRESSURE_LIMIT = 21000; //where safety kicks in
-const int MEDIUM_NYLON_SURFACE_STRUCTURE_SAFETY_PRESSURE_LIMIT = 25000;
-const int SPINACKER_STRUCTURE_SAFETY_PRESSURE_LIMIT = 19000;
+const int MEDIUM_NYLON_SURFACE_STRUCTURE_SAFETY_PRESSURE_LIMIT = 25000; //where safety kicks in
+const int SPINACKER_STRUCTURE_SAFETY_PRESSURE_LIMIT = 19000;//where safety kicks in
+
 //ADCtest testADC(&ads);
 int prsssr = 0;
 unsigned long lastLast = 0;
@@ -250,8 +251,8 @@ void setup() {
     ch4.setAdc(&Psens_adc, SENSE_PIN_4);
   #endif
 
-
-
+    //VALVE CHANNELS
+      //arguments:  min_pressure, max_pressure, safety_stop_pressure, timeout
     ch1.begin(15500,BIGBAG_SAFETY_PRESSURE_LIMIT-250,BIGBAG_SAFETY_PRESSURE_LIMIT,TIMEOUT); // lower and upper pressure vals are experimentally derived from Psens_adc wset to ads.setGain(GAIN_TWO);
 
     ch2.begin(15500,FLUTE_SAFETY_PRESSURE_LIMIT-250,FLUTE_SAFETY_PRESSURE_LIMIT, TIMEOUT);//(15500,MEDIUM_NYLON_SURFACE_STRUCTURE_SAFETY_PRESSURE_LIMIT-250,MEDIUM_NYLON_SURFACE_STRUCTURE_SAFETY_PRESSURE_LIMIT);
@@ -274,6 +275,9 @@ void setup() {
     // ch2.setGuiMappingRange(0,100);
     // ch3.setGuiMappingRange(0,100);
     // ch4.setGuiMappingRange(0,100);
+
+
+// PROPORITIONAL CHANNELS 
 
   //test valves
 
@@ -338,8 +342,8 @@ void loop() {
     else
     { /*________sequencer mode__________*/
         /*steps through sequence by pressing button 1*/
-//        if (digitalRead(BUTTON_1) == LOW) Serial.println("button1 down");
-        //if ((Button_switcher.getFlag() && !button) || startup) { //||Button_1.get_buttonNow()
+        // if (digitalRead(BUTTON_1) == LOW) Serial.println("button1 down");
+        // if ((Button_switcher.getFlag() && !button) || startup) { //||Button_1.get_buttonNow()
         if (((digitalRead(BUTTON_SWITCH) == LOW || digitalRead(BUTTON_1) == LOW) && !button) || startup) { //||Button_1.get_buttonNow()
             //digitalWrite(SWITCH_LED, HIGH);
             brightness = 255;
