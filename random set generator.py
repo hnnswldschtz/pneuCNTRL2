@@ -1,7 +1,9 @@
 import random
 from collections import defaultdict
 import matplotlib.pyplot as plt
-
+import time
+#seed time-based random seed by       
+random.seed(time.time())  # Use system time to seed the random number generator
 def generate_balanced_sequence(values, iterations):
     num_values = len(values)
     base_count = iterations // num_values
@@ -52,13 +54,14 @@ sequence = generate_balanced_sequence(values, iterations)
 
 # Print C-style array
 formatted = ", ".join(str(x) for x in sequence)
-print(f"\nint sequence[{iterations}] = {{{formatted}}};\n")
+print(f"\nint setX[{iterations}] = {{{formatted}}};\n")
 
 # Plot
 plt.figure(figsize=(14, 4))
 plt.plot(sequence, marker='o', linestyle='-', color='blue')
 plt.title(f"Balanced Random Sequence of {iterations} Steps (No Repeats)")
 plt.xlabel("Step")
+plt.xticks(range(iterations + 1))
 plt.ylabel("Value")
 plt.yticks(values)
 plt.grid(True)

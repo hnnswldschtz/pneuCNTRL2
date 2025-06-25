@@ -32,8 +32,9 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 
 #define MANUAL_MODE false // set to true to use manual mode, false to use sequencer mode
 #define RANDOMIZE_SEQUENCE_START false // set to true to randomize the sequence start, false to start with first sequence step
-#define SET_MODE false // set to 1 to use the set1 sequence, 0 to use the sequence array
+#define SET_MODE true // set to 1 to use the set1 sequence, 0 to use the sequence array
 #define TRAINING_MODE false // set to 1 to use the training mode, 0 to use the normal mode
+
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
@@ -222,8 +223,7 @@ void setup() {
     #endif
 
 
-
-  delay(2000);
+  delay(1000); //war 2000
   if (!PV_dac.begin()) {
       Serial.println("Failed to find MCP4728 chip");
   }
