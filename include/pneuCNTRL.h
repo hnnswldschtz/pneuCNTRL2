@@ -51,6 +51,7 @@ struct DATA_P {
   int ch5_val;
   int ch6_val;
   int ch7_val;
+  int ch8_val;
 };
 
 struct SEQ_CH {

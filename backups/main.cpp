@@ -25,9 +25,6 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 // either manual mode or sequence mode
 #define MANUAL_MODE false
 #define ADS_L false
-#define HOW_MANY_CHANNELS 4
-
-const boolean RANDOMIZE_SEQUENCE_START =  true; // set to true to randomize the sequence start, false to start with first sequence step
 
 LiquidCrystal_I2C lcd(0x27, 16, 2); // Set the LCD address to 0x27 for a 16 chars and 2 line display
 Adafruit_NeoPixel switch_neo_pixels(NEO_SWITCH_NUM_PIXELS, NEO_SWITCH_PIN, NEO_GRB + NEO_KHZ800);
@@ -150,79 +147,32 @@ ch 6P: test Flute/notn
 */
 
 
-
-int set1[] = {5,4,5,4,1,5,4,2,1,4,3,2,3,5,3,2,4,5,3,5,1,2,3,2,3,1,3,4,5,1,3,1,4,1,3,2,3,5,1,4,2,4,1,5,2,4,5,2,1,2};
-#define set1Length int((sizeof set1)/sizeof(*set1))  // calc sequence length
-
-
-//3channel, double frequency
-#if HOW_MANY_CHANNELS == 3
-DATA_P dataPoint_1 = {40,  0,   0,  0,  0,  0, 0, 0}; // empty data point for ch5P
-DATA_P dataPoint_2 = {40,  0,   0,  0,  0,  0, 99, 0}; // empty data point for ch5P
-DATA_P dataPoint_3 = {40,  0,   0,  0,  99,  0, 99, 0}; // empty data point for ch5P
-DATA_P dataPoint_4 = {40,  0,   0,  0,  99, 99, 99, 0}; // empty data point for ch5P
- 
-#else
-// 4ch, double freuency 
-DATA_P dataPoint_1 = {40,  0,   0,  0,  0,  0, 0, 0}; // empty data point for ch5P
-DATA_P dataPoint_2 = {40,  0,   0,  0,  0,  0, 0, 90}; // empty data point for ch5P
-DATA_P dataPoint_3 = {40,  0,   0,  0,  127,  0, 0, 90}; // empty data point for ch5P
-DATA_P dataPoint_4 = {40,  0,   0,  0,  0, 127, 0, 90}; // empty data point for ch5P
-DATA_P dataPoint_5 = {40,  0,   0,  0,  127, 127, 127, 90}; // empty data point for ch5P
-
-// 4ch, increase area
-DATA_P dataPoint_6 = {40,  0,   0,  0,  0,  0, 0, 0}; // empty data point for ch5P
-DATA_P dataPoint_7 = {40,  0,   0,  0,  127,  0, 0, 0}; // empty data point for ch5P
-DATA_P dataPoint_8 = {40,  0,   0,  0,  127,  127, 0, 0}; // empty data point for ch5P
-DATA_P dataPoint_9 = {40,  0,   0,  0,  127, 127, 127, 0}; // empty data point for ch5P
-DATA_P dataPoint_10 = {40,  0,   0,  0,  127, 127, 127, 90}; // empty data point for ch5P
-#endif
+// nicht mehr gebraucht
+SEQ_CH ch1_seq = {32, 57, 99, 18,  10,  6 };//ch 1: Haptic Baguett (core)
+SEQ_CH ch2_seq = {32, 57, 99, 18,  9,  0 };//ch 2: Flute
+SEQ_CH ch3_seq = { 0, 20, 99,  0,  0,  0 };//ch 3: Haptic Pattern 1
+SEQ_CH ch4_seq = {70, 99, 99, 37, 25,  0 };//ch 4: Haptic Pattern 2
 
 
-#if HOW_MANY_CHANNELS == 4
-//DATA_P sequence [] = {dataPoint_1,dataPoint_2, dataPoint_3, dataPoint_4, dataPoint_5 }; // double frequency
-//DATA_P sequence [] = {dataPoint_6,dataPoint_7, dataPoint_8, dataPoint_9, dataPoint_10 }; //increase area 
-
-//5x double frequency, 5x increase area
-/*DATA_P sequence [] = {
-  dataPoint_1,dataPoint_2, dataPoint_3, dataPoint_4, dataPoint_5,
-  dataPoint_1,dataPoint_2, dataPoint_3, dataPoint_4, dataPoint_5,
-  dataPoint_1,dataPoint_2, dataPoint_3, dataPoint_4, dataPoint_5,
-  dataPoint_1,dataPoint_2, dataPoint_3, dataPoint_4, dataPoint_5,
-  dataPoint_1,dataPoint_2, dataPoint_3, dataPoint_4, dataPoint_5,
-  dataPoint_6, dataPoint_7, dataPoint_8, dataPoint_9, dataPoint_10,
-  dataPoint_6, dataPoint_7, dataPoint_8, dataPoint_9, dataPoint_10,
-  dataPoint_6, dataPoint_7, dataPoint_8, dataPoint_9, dataPoint_10,
-  dataPoint_6, dataPoint_7, dataPoint_8, dataPoint_9, dataPoint_10,
-  dataPoint_6, dataPoint_7, dataPoint_8, dataPoint_9, dataPoint_10
-};
-*/
-//pingpong frequence sequence
-DATA_P sequence [] = {
-  dataPoint_1,dataPoint_2, dataPoint_3, dataPoint_4, dataPoint_5,
-  dataPoint_4,dataPoint_3, dataPoint_2, dataPoint_1, dataPoint_2,
-  dataPoint_3,dataPoint_4, dataPoint_5, dataPoint_4, dataPoint_3,
-  dataPoint_2,dataPoint_1, dataPoint_2, dataPoint_3, dataPoint_4,
-  dataPoint_5,dataPoint_4, dataPoint_3, dataPoint_2, dataPoint_2
-};
-
-//pingpong sequence with increase area
-// DATA_P sequence [] = {
-//   dataPoint_6, dataPoint_7, dataPoint_8, dataPoint_9, dataPoint_10,
-//   dataPoint_9, dataPoint_8, dataPoint_7, dataPoint_6, dataPoint_7,
-//   dataPoint_8, dataPoint_9, dataPoint_10, dataPoint_9, dataPoint_8,
-//   dataPoint_7, dataPoint_6, dataPoint_7, dataPoint_8, dataPoint_9,
-//   dataPoint_10, dataPoint_9, dataPoint_8, dataPoint_7, dataPoint_6
-// };
+SEQ_CH ch5_seq = {32, 57, 99, 18,  6,  0 };//ch 5P: BIG BAG
+SEQ_CH ch6_seq = {32, 57, 80, 18,  9,  0 };//ch 6P: test Flute/notn
 
 
-DATA_P randomList [] = {dataPoint_1,dataPoint_2, dataPoint_3, dataPoint_4, dataPoint_5 };
-#else
-//3channel
-DATA_P sequence [] = {dataPoint_1, dataPoint_2, dataPoint_3, dataPoint_4};
-#endif
+// DATA_P dataPoint_1 = {32, 32,  0,  70, 32, 32};
+// DATA_P dataPoint_2 = {57, 57,  20, 99, 57, 57};
+// DATA_P dataPoint_3 = {99, 99,  99, 99, 99, 99};
+// DATA_P dataPoint_4 = {18, 18,   0, 37, 18, 18}; // was 34/73
+// DATA_P dataPoint_5 = {12,  9,   0, 25,  6,  9}; // set to nine to reach 12
+// DATA_P dataPoint_6 = { 8,  0,   0,  0,  0,  0};
 
+DATA_P dataPoint_1 = {70, 32,  0,  70, 32, 0, 70};
+DATA_P dataPoint_2 = {70, 57,  20, 99, 57, 20, 99};
+DATA_P dataPoint_3 = {70, 99,  99, 99, 99, 99, 99};
+DATA_P dataPoint_4 = {70, 18,   0, 37, 18, 0, 40}; // was 34/73
+DATA_P dataPoint_5 = {70,  10,   0, 25,  6, 50, 0 }; // set to nine to reach 12
+DATA_P dataPoint_6 = {70,  0,   0,  0,  0,  0, 0};
 
+DATA_P sequence [] = {dataPoint_1, dataPoint_2, dataPoint_3, dataPoint_4, dataPoint_5, dataPoint_6};
 //DATA_P sequence[4];
 
 #define SEQ_LNGTH int((sizeof sequence)/sizeof(*sequence))  // calc sequence length
@@ -305,15 +255,14 @@ void setup() {
   #endif
 
     //VALVE CHANNELS
-    //2025 3 CHANNELS Haptic Setup 
       //arguments:  min_pressure, max_pressure, safety_stop_pressure, timeout
     ch1.begin(15500,BIGBAG_SAFETY_PRESSURE_LIMIT-250,BIGBAG_SAFETY_PRESSURE_LIMIT,TIMEOUT); // lower and upper pressure vals are experimentally derived from Psens_adc wset to ads.setGain(GAIN_TWO);
 
-    ch2.begin(15500,BAGUETTE_SAFETY_PRESSURE_LIMIT-250,BAGUETTE_SAFETY_PRESSURE_LIMIT, TIMEOUT); //Haptic ch 1
+    ch2.begin(15500,FLUTE_SAFETY_PRESSURE_LIMIT-250,FLUTE_SAFETY_PRESSURE_LIMIT, TIMEOUT);//(15500,MEDIUM_NYLON_SURFACE_STRUCTURE_SAFETY_PRESSURE_LIMIT-250,MEDIUM_NYLON_SURFACE_STRUCTURE_SAFETY_PRESSURE_LIMIT);
 
-    ch3.begin(15500,BAGUETTE_SAFETY_PRESSURE_LIMIT-250,BAGUETTE_SAFETY_PRESSURE_LIMIT, TIMEOUT);  //Haptic ch 2
+    ch3.begin(15500,BAGUETTE_SAFETY_PRESSURE_LIMIT-250,BAGUETTE_SAFETY_PRESSURE_LIMIT, TIMEOUT);//(15500,LENKRAD_SAFETY_PRESSURE_LIMIT-250,LENKRAD_SAFETY_PRESSURE_LIMIT);
 
-    ch4.begin(15500,BAGUETTE_SAFETY_PRESSURE_LIMIT-250,BAGUETTE_SAFETY_PRESSURE_LIMIT, TIMEOUT);  //Haptic ch 3
+    ch4.begin(15500,BAGUETTE_SAFETY_PRESSURE_LIMIT-250,BAGUETTE_SAFETY_PRESSURE_LIMIT, TIMEOUT);
     //delay(10000);
     /*set hysteresis boundarys according to used air chamber size and flexibility
     the bigger the air chamber, the lower the values
@@ -359,40 +308,14 @@ void setup() {
   ch8P.setDac(&PV_dac, MCP4728_CHANNEL_B);
 
 
-  /* ------------ begin and set pressure range and limits of the connected inflatable
+  /* ------------ begin and set pressure range and limits of the connected inflateble
   takes three arguemnts, Lower end of pressure, upper end, safety limit and pressure range in Bar of valve (default = 1).
   pressure value is experimentally derived and revers to voltage levels from PV_adc wset to ads.setGain(GAIN_TWO);
   */
-  ch5P.begin(0,30000,30000); // BIGBAG CALIBRATED lower and upper pressure vals are experimentally derived from Psens_adc wset to ads.setGain(GAIN_TWO) (max is 32768);
-  ch6P.begin(0,30000,30000);
-  ch7P.begin(0,30000,30000);  // has fourth argument, to specify the higher pressure Range of the Valve in Bar
-  ch8P.begin(0,30000,30000,2);  // has fourth argument, to specify the higher pressure Range of the Valve in Bar
-//add all values from set1
-int sum=0;
-  for (int i = 0; i < set1Length; i++) {
-  sum+= set1[i];
-  }
-  Serial.print("Sum of set1: ");
-  Serial.println(sum);
-  if (sum%15==0){
-    Serial.println("Set1 is sane");
-  } else {
-    Serial.println("Set1 is not sane, please check your values");
-  }
-  //set the pressure range of the valves in GUI land
-  ch5P.setGuiMappingRange(0,100);
-  ch6P.setGuiMappingRange(0,100);
-  ch7P.setGuiMappingRange(0,100);
-  ch8P.setGuiMappingRange(0,100);
-
-  //set the pressure range of the valves in GUI land
-  for (int i=0;i<4;i++){
-    vArray[i]->setGuiMappingRange(0,100);
-  }
-
-  lcd.clear();
-  lcd.print("Ready");
-  delay(500);
+  ch5P.begin(0,10000,10250); // BIGBAG CALIBRATED lower and upper pressure vals are experimentally derived from Psens_adc wset to ads.setGain(GAIN_TWO) (max is 32768);
+  ch6P.begin(0,10250,10500);
+  ch7P.begin(0,10250,10500);  // has fourth argument, to specify the higher pressure Range of the Valve in Bar
+  ch8P.begin(0,10250,10500,2);  // has fourth argument, to specify the higher pressure Range of the Valve in Bar
 }
 
 void loop() {
@@ -444,53 +367,22 @@ void loop() {
             trig = 1;
             button = true;
             lightsOut = false;
-          
-            
+            count++;
+            if (count >= SEQ_LNGTH) count = 0;
 
             /*--------------DEBUG MSG---------------*/
             // Serial.print("count: ");
             // Serial.println(count);
-          
-            if (RANDOMIZE_SEQUENCE_START) { //randomize sequence start
-  
-              int oldCount = count;
-              while (count == oldCount) { //randomize sequence start
-                #if HOW_MANY_CHANNELS == 4
-                  count=random(0,5); // randomize sequence start
-                #else
-                  count=random(0,4); // randomize sequence start
-                #endif
-                Serial.print("count: ");
-                Serial.println(count);
-                Serial.print("oldCount: ");
-                Serial.println(oldCount);
-                
-
-              } 
-            }
-
-            else {
-              count++;
-              if (count >= SEQ_LNGTH) count = 0;
-            }
 
 
             ch5P.goToPressure(sequence[count].ch5_val);
             ch6P.goToPressure(sequence[count].ch6_val);
             ch7P.goToPressure(sequence[count].ch7_val);
-            ch8P.goToPressure(sequence[count].ch8_val);    
 
 
+            ch8P.goToPressure(0);
 
-            char strBuf[10];
-            #if HOW_MANY_CHANNELS == 3
-            sprintf(strBuf, "%3d", count*33);
-            #else 
-            sprintf(strBuf, "%3d", count*25);
-            #endif
-            Serial.print(strBuf);
 
-            Serial.print("% | ");
             Serial.print(sequence[count].ch1_val);
             Serial.print(" ");
             Serial.print(sequence[count].ch2_val);
@@ -501,11 +393,7 @@ void loop() {
             Serial.print(" ");
             Serial.print(sequence[count].ch5_val);
             Serial.print(" ");
-            Serial.print(sequence[count].ch6_val);
-            Serial.print(" ");
-            Serial.print(sequence[count].ch7_val);
-            Serial.print(" ");
-            Serial.println(sequence[count].ch8_val);
+            Serial.println(sequence[count].ch6_val);
             // Serial.print(" ");
             // Serial.println(sequence[count].ch7_val);
             // Serial.print(" ");
