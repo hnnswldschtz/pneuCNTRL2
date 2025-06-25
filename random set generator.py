@@ -15,7 +15,11 @@ def generate_balanced_sequence(values, iterations):
         if len(sequence) == iterations:
             return sequence
 
-        candidates = [v for v in values if counts[v] < target_counts[v] and v != last_value]
+        # For the first element, exclude 0
+        if len(sequence) == 0:
+            candidates = [v for v in values if v != 0]
+        else:
+            candidates = [v for v in values if counts[v] < target_counts[v] and v != last_value]
         random.shuffle(candidates)
 
         for v in candidates:
@@ -35,12 +39,14 @@ def generate_balanced_sequence(values, iterations):
     if sequence is None:
         raise RuntimeError("Failed to generate a valid sequence with the given constraints.")
 
+    # Add a zero at the start
+    sequence = [0] + sequence
+
     return sequence
 
 # Parameters
-values = [1, 2, 3, 4, 5]
+values = [0, 1, 2, 3, 4]
 iterations = 20
-
 # Generate sequence
 sequence = generate_balanced_sequence(values, iterations)
 

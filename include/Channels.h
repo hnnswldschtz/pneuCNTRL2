@@ -165,6 +165,5 @@ class ProportionalChannel{
     unsigned long starttime;
     unsigned long endtime ;
 
-
 };
 #endif

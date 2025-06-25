@@ -22,12 +22,22 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #include "PneuCNTRL.h"
 //#include <ADS1115_lite.h>
 
-// either manual mode or sequence mode
-#define MANUAL_MODE false
 #define ADS_L false
 #define HOW_MANY_CHANNELS 4
+#define DEBUG false
 
-const boolean RANDOMIZE_SEQUENCE_START =  true; // set to true to randomize the sequence start, false to start with first sequence step
+
+
+// ++++++++++++++++++++++ SET HERE MODE OF OPERATION ++++++++++++++++++++++
+
+const boolean MANUAL_MODE = false; // set to true to use manual mode, false to use sequencer mode
+const boolean RANDOMIZE_SEQUENCE_START =  false; // set to true to randomize the sequence start, false to start with first sequence step
+const boolean SET_MODE = true; // set to true to use the set1 sequence, false to use the sequence array
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+
 
 LiquidCrystal_I2C lcd(0x27, 16, 2); // Set the LCD address to 0x27 for a 16 chars and 2 line display
 Adafruit_NeoPixel switch_neo_pixels(NEO_SWITCH_NUM_PIXELS, NEO_SWITCH_PIN, NEO_GRB + NEO_KHZ800);
@@ -43,45 +53,6 @@ Adafruit_MCP4728 PV_dac;
 
 
 Button Button_switcher;
-
-
-// class ADCtest{
-//
-// private:
-//
-//   Adafruit_ADS1115 * adc;
-//
-// public:
-//   ADCtest(Adafruit_ADS1115 * _adc){
-//   adc = _adc;
-//   adc->setGain(GAIN_TWO);
-//   adc->begin();
-//   }
-//   int readADC(){
-//     int pressure = adc->readADC_SingleEnded(1);
-//     return pressure;
-//   }
-//
-// };
-
-
-/* ValveChannel Class Constructor,
-Takes 6 Arguments Inflate Valve pin, deflate valve pin, adafruit ads1115 adc,
-ads1115 input ch, potentiometer pin, button pin
-returns ?
-*/
-
-// --------- all four buttons are acivated in manual mode
-// #if MANUAL_MODE==true
-//     ValveChannel ch1(valve_A1, valve_A2, &Psens_adc, SENSE_PIN_1, POTI_1, BUTTON_1); //instance of channel
-// // --------- button 1 is for switching sets in sequencer change init to button_2 to enable interrupt on button_1
-// #elif MANUAL_MODE==false
-//     ValveChannel ch1(valve_A1, valve_A2, &Psens_adc, SENSE_PIN_1, POTI_1, BUTTON_2); //instance of channel
-// #endif
-//
-// ValveChannel ch2(valve_B3, valve_B4, &Psens_adc, SENSE_PIN_2, POTI_2, BUTTON_2);
-// ValveChannel ch3(valve_C5, valve_C6, &Psens_adc, SENSE_PIN_3, POTI_3, BUTTON_3);
-// ValveChannel ch4(valve_D7, valve_D8, &Psens_adc, SENSE_PIN_4, POTI_4, BUTTON_4);
 
 
 #if MANUAL_MODE==true
@@ -111,9 +82,11 @@ int old_butVal[4];
 int page = 0;
 int trig = 0;
 int count = -1;
+int set_count = 0; // used for set1 sequence
 unsigned long triggerMetro;
 boolean button = false;
 boolean startup = true;
+unsigned long lastButtonPressTime = 0;
 
 unsigned long ledOnTime = 0;
 boolean showIt = false;
@@ -122,37 +95,11 @@ unsigned long brightFadeTime = 0;
 byte brightness;
 boolean fading  = false;
 
-/*
-DATA_P dataPoint_1 = {100, 100, 50, 50};
-DATA_P dataPoint_2 = {10, 5, 60, 60};
-DATA_P dataPoint_3 = {20, 20, 70, 70};
-DATA_P dataPoint_4 = {15, 20, 80, 80};
-DATA_P dataPoint_5 = {10, 30, 90, 90};
-DATA_P dataPoint_6 = {20, 30, 100, 100};
-DATA_P dataPoint_7 = {10, 10, 5, 00};
-DATA_P dataPoint_8 = {3, 3, 6, 10};
-DATA_P dataPoint_9 = {20, 20, 15, 20};
-DATA_P dataPoint_10 = {20, 20, 20, 30};
-DATA_P dataPoint_11 = {20, 20, 30, 40};
-DATA_P sequence [] = {dataPoint_1, dataPoint_2, dataPoint_3, dataPoint_4, dataPoint_5, dataPoint_6, dataPoint_7, dataPoint_8, dataPoint_9, dataPoint_10, dataPoint_11};
-*/
-
-
-/* MARCH 2022:
-how does your bankaccount feel?
-connected:
-ch 1: Haptic Baguett (core)
-ch 2: Flute
-ch 3: Haptic Pattern 1
-ch 4: Haptic Pattern 2
-ch 5P: BIG BAG
-ch 6P: test Flute/notn
-*/
 
 
 
-int set1[] = {5,4,5,4,1,5,4,2,1,4,3,2,3,5,3,2,4,5,3,5,1,2,3,2,3,1,3,4,5,1,3,1,4,1,3,2,3,5,1,4,2,4,1,5,2,4,5,2,1,2};
-#define set1Length int((sizeof set1)/sizeof(*set1))  // calc sequence length
+int set1[] = {0, 4, 2, 3, 2, 1, 2, 4, 2, 1, 4, 0, 3, 0, 1, 0, 3, 0, 1, 3, 4};
+int set1Length = int((sizeof set1)/sizeof(*set1));  // calc sequence length
 
 
 //3channel, double frequency
@@ -162,7 +109,7 @@ DATA_P dataPoint_2 = {40,  0,   0,  0,  0,  0, 99, 0}; // empty data point for c
 DATA_P dataPoint_3 = {40,  0,   0,  0,  99,  0, 99, 0}; // empty data point for ch5P
 DATA_P dataPoint_4 = {40,  0,   0,  0,  99, 99, 99, 0}; // empty data point for ch5P
  
-#else
+#elif HOW_MANY_CHANNELS == 4
 // 4ch, double freuency 
 DATA_P dataPoint_1 = {40,  0,   0,  0,  0,  0, 0, 0}; // empty data point for ch5P
 DATA_P dataPoint_2 = {40,  0,   0,  0,  0,  0, 0, 90}; // empty data point for ch5P
@@ -176,10 +123,8 @@ DATA_P dataPoint_7 = {40,  0,   0,  0,  127,  0, 0, 0}; // empty data point for 
 DATA_P dataPoint_8 = {40,  0,   0,  0,  127,  127, 0, 0}; // empty data point for ch5P
 DATA_P dataPoint_9 = {40,  0,   0,  0,  127, 127, 127, 0}; // empty data point for ch5P
 DATA_P dataPoint_10 = {40,  0,   0,  0,  127, 127, 127, 90}; // empty data point for ch5P
-#endif
 
 
-#if HOW_MANY_CHANNELS == 4
 //DATA_P sequence [] = {dataPoint_1,dataPoint_2, dataPoint_3, dataPoint_4, dataPoint_5 }; // double frequency
 //DATA_P sequence [] = {dataPoint_6,dataPoint_7, dataPoint_8, dataPoint_9, dataPoint_10 }; //increase area 
 
@@ -198,13 +143,13 @@ DATA_P dataPoint_10 = {40,  0,   0,  0,  127, 127, 127, 90}; // empty data point
 };
 */
 //pingpong frequence sequence
-DATA_P sequence [] = {
-  dataPoint_1,dataPoint_2, dataPoint_3, dataPoint_4, dataPoint_5,
-  dataPoint_4,dataPoint_3, dataPoint_2, dataPoint_1, dataPoint_2,
-  dataPoint_3,dataPoint_4, dataPoint_5, dataPoint_4, dataPoint_3,
-  dataPoint_2,dataPoint_1, dataPoint_2, dataPoint_3, dataPoint_4,
-  dataPoint_5,dataPoint_4, dataPoint_3, dataPoint_2, dataPoint_2
-};
+// DATA_P sequence [] = {
+//   dataPoint_1,dataPoint_2, dataPoint_3, dataPoint_4, dataPoint_5,
+//   dataPoint_4,dataPoint_3, dataPoint_2, dataPoint_1, dataPoint_2,
+//   dataPoint_3,dataPoint_4, dataPoint_5, dataPoint_4, dataPoint_3,
+//   dataPoint_2,dataPoint_1, dataPoint_2, dataPoint_3, dataPoint_4,
+//   dataPoint_5,dataPoint_4, dataPoint_3, dataPoint_2, dataPoint_2
+// };
 
 //pingpong sequence with increase area
 // DATA_P sequence [] = {
@@ -215,8 +160,8 @@ DATA_P sequence [] = {
 //   dataPoint_10, dataPoint_9, dataPoint_8, dataPoint_7, dataPoint_6
 // };
 
-
-DATA_P randomList [] = {dataPoint_1,dataPoint_2, dataPoint_3, dataPoint_4, dataPoint_5 };
+// sequence needed for rnd sequence start
+DATA_P sequence [] = {dataPoint_1,dataPoint_2, dataPoint_3, dataPoint_4, dataPoint_5 };
 #else
 //3channel
 DATA_P sequence [] = {dataPoint_1, dataPoint_2, dataPoint_3, dataPoint_4};
@@ -273,15 +218,6 @@ void setup() {
       Serial.println("Failed to find MCP4728 chip");
   }
 
-  // if (!PV_adc.testConnection()) {
-  //   Serial.println("PropChanAdc Connection failed"); //oh man...something is wrong
-  //   return;
-  // }
-  // if (!Psens_adc.testConnection()) {
-  //   Serial.println("ValvePSens Connection failed"); //oh man...something is wrong
-  //   return;
-  // }
-
     pinMode(BUTTON_SWITCH, INPUT_PULLUP);
     //attachInterrupt(BUTTON_SWITCH, setFlagHandler , FALLING);
 
@@ -324,21 +260,6 @@ void setup() {
     ch4.setInertia(20,10);
 
 
-    /*//value range for displayed in GUI */
-    // ch1.setGuiMappingRange(0,100);
-    // ch2.setGuiMappingRange(0,100);
-    // ch3.setGuiMappingRange(0,100);
-    // ch4.setGuiMappingRange(0,100);
-
-
-// PROPORITIONAL CHANNELS 
-
-  //test valves
-
-  //ch5P.setAdc(&PV_adc,3); //ADS1115_REG_CONFIG_MUX_SINGLE_3);
-  //ch6P.setAdc(&PV_adc,2); //ADS1115_REG_CONFIG_MUX_SINGLE_2);
-  //ch7P.setAdc(&PV_adc,0); //ADS1115_REG_CONFIG_MUX_SINGLE_0);
-
 
 
   #if ADS_L
@@ -367,18 +288,23 @@ void setup() {
   ch6P.begin(0,30000,30000);
   ch7P.begin(0,30000,30000);  // has fourth argument, to specify the higher pressure Range of the Valve in Bar
   ch8P.begin(0,30000,30000,2);  // has fourth argument, to specify the higher pressure Range of the Valve in Bar
-//add all values from set1
-int sum=0;
+
+
+  //add all values from set1
+  int sum=0;
   for (int i = 0; i < set1Length; i++) {
   sum+= set1[i];
   }
   Serial.print("Sum of set1: ");
   Serial.println(sum);
-  if (sum%15==0){
+  if (sum%10==0){
     Serial.println("Set1 is sane");
   } else {
     Serial.println("Set1 is not sane, please check your values");
   }
+
+
+
   //set the pressure range of the valves in GUI land
   ch5P.setGuiMappingRange(0,100);
   ch6P.setGuiMappingRange(0,100);
@@ -440,6 +366,8 @@ void loop() {
           }
             //Serial.println("LIGHTS ON");
             ledOnTime = millis();
+            // When button is pressed:
+            
             startup = false; //makes sure pessures are defined if not risk of burst!!!
             trig = 1;
             button = true;
@@ -457,40 +385,53 @@ void loop() {
               while (count == oldCount) { //randomize sequence start
                 #if HOW_MANY_CHANNELS == 4
                   count=random(0,5); // randomize sequence start
-                #else
+                #elif HOW_MANY_CHANNELS == 3
                   count=random(0,4); // randomize sequence start
                 #endif
                 Serial.print("count: ");
                 Serial.println(count);
                 Serial.print("oldCount: ");
                 Serial.println(oldCount);
-                
-
               } 
             }
 
-            else {
-              count++;
-              if (count >= SEQ_LNGTH) count = 0;
+            else if (SET_MODE) {
+              
+              count=set1[set_count]; //set to first sequence step
+              //set_count++; //set to first sequence step
+              if (set_count >= set1Length) set_count = 0; //reset to first sequence step
             }
 
-
+            else {
+              //count++;
+              if (count >= SEQ_LNGTH) count = 0;
+            }
+            unsigned long timeSinceLastButton = millis() - lastButtonPressTime;
+     
             ch5P.goToPressure(sequence[count].ch5_val);
             ch6P.goToPressure(sequence[count].ch6_val);
             ch7P.goToPressure(sequence[count].ch7_val);
             ch8P.goToPressure(sequence[count].ch8_val);    
 
-
-
+            
+            
             char strBuf[10];
-            #if HOW_MANY_CHANNELS == 3
-            sprintf(strBuf, "%3d", count*33);
-            #else 
-            sprintf(strBuf, "%3d", count*25);
-            #endif
-            Serial.print(strBuf);
 
-            Serial.print("% | ");
+            sprintf(strBuf, "%2d", set_count);
+            Serial.print(strBuf);
+            Serial.print(" | "); 
+            
+            
+            
+            sprintf(strBuf, "%5d", int(timeSinceLastButton));
+            Serial.print("time (ms): ");
+            Serial.print(strBuf);
+            Serial.print(" | "); 
+            
+            sprintf(strBuf, "%3d", count);
+            Serial.print(strBuf);
+            Serial.print(" | ");
+
             Serial.print(sequence[count].ch1_val);
             Serial.print(" ");
             Serial.print(sequence[count].ch2_val);
@@ -506,11 +447,17 @@ void loop() {
             Serial.print(sequence[count].ch7_val);
             Serial.print(" ");
             Serial.println(sequence[count].ch8_val);
-            // Serial.print(" ");
-            // Serial.println(sequence[count].ch7_val);
-            // Serial.print(" ");
-            // Serial.println(sequence[count].ch8_val);
-
+  
+            //increment set_count for next sequence step
+            if (SET_MODE) {
+              set_count++; //set to first sequence step
+              if (set_count >= set1Length) set_count = 0; //reset to first sequence step
+            }
+            else if(RANDOMIZE_SEQUENCE_START) {
+              count++;
+              if (count >= SEQ_LNGTH) count = 0;
+            }
+            lastButtonPressTime = millis();
         }
         else if ((digitalRead(BUTTON_SWITCH) == HIGH && digitalRead(BUTTON_1) == HIGH)  && button && (millis()-ledOnTime >200)) { //&& !Button_1.get_buttonNow()
             button = false;
@@ -518,13 +465,15 @@ void loop() {
             showIt = true;
             //Button_switcher.clearFlag();
         }
-
-        //---------Valve channels-------------
+        //operate the valves
+        
         if ( millis() - triggerMetro > 100 ){
+          //---------Valve channels-------------
           ch1.trigger(sequence[count].ch1_val, trig);
           ch2.trigger(sequence[count].ch2_val, trig);
           ch3.trigger(sequence[count].ch3_val, trig);
           ch4.trigger(sequence[count].ch4_val, trig);
+          //---------Proportional channels-------------
           ch5P.operate();
           ch6P.operate();
           ch7P.operate();

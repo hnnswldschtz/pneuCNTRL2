@@ -21,6 +21,7 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #include "PneuCNTRL.h"
 #include "Channels.h"
 
+#define DEBUG false
 //public methods
 
 //ValveChannel::ValveChannel(int inf_pin, int def_pin, Adafruit_ADS1115 * _adc, int _adc_ch, int pot_pin, int button_pin){
@@ -194,13 +195,13 @@ byte ValveChannel::trigger(int p_set, int trig){
     }
     //timeout if inflation never reaches top
     if (inFlate && (millis() - inFlate_time > time_out)) {
-        Serial.println ("timeout_inF ");
+        if (DEBUG) Serial.println ("timeout_inF ");
         inFlate=false;
         stop();
     }
     //timeout if inflation never reaches bottom
     if (deFlate&&(millis() - deFlate_time>time_out)) {
-        Serial.println ("timeout_deF ");
+        if (DEBUG) Serial.println ("timeout_deF ");
         deFlate=false;
         stop();
     }
