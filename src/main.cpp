@@ -30,10 +30,10 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 
 // ++++++++++++++++++++++ SET HERE MODE OF OPERATION ++++++++++++++++++++++
 
-const boolean MANUAL_MODE = false; // set to true to use manual mode, false to use sequencer mode
-const boolean RANDOMIZE_SEQUENCE_START =  false; // set to true to randomize the sequence start, false to start with first sequence step
-const boolean SET_MODE = true; // set to true to use the set1 sequence, false to use the sequence array
-
+#define MANUAL_MODE false // set to true to use manual mode, false to use sequencer mode
+#define RANDOMIZE_SEQUENCE_START false // set to true to randomize the sequence start, false to start with first sequence step
+#define SET_MODE false // set to 1 to use the set1 sequence, 0 to use the sequence array
+#define TRAINING_MODE false // set to 1 to use the training mode, 0 to use the normal mode
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
@@ -82,7 +82,9 @@ int old_butVal[4];
 int page = 0;
 int trig = 0;
 int count = -1;
-int set_count = 0; // used for set1 sequence
+int set_index = 0; // used for set sequence indexing
+int set_selector = 0; // used for set sequence selection
+
 unsigned long triggerMetro;
 boolean button = false;
 boolean startup = true;
@@ -97,10 +99,18 @@ boolean fading  = false;
 
 
 
-
-int set1[] = {0, 4, 2, 3, 2, 1, 2, 4, 2, 1, 4, 0, 3, 0, 1, 0, 3, 0, 1, 3, 4};
-int set1Length = int((sizeof set1)/sizeof(*set1));  // calc sequence length
-
+#if SET_MODE
+  int set1[] = {0, 4, 2, 3, 2, 1, 2, 4, 2, 1, 4, 0, 3, 0, 1, 0, 3, 0, 1, 3, 4};
+  int set2[] = {0, 4, 3, 4, 1, 3, 1, 0, 2, 0, 3, 1, 2, 3, 4, 0, 1, 4, 2, 0, 2};
+  int set3[] = {0, 2, 4, 3, 4, 2, 1, 2, 3, 4, 1, 0, 4, 3, 1, 0, 2, 3, 0, 1, 0};
+  int* setList[] = { set1, set2, set3 };
+  int setLengthList[] = { int((sizeof set1)/sizeof(*set1)), int((sizeof set2)/sizeof(*set2)), int((sizeof set3)/sizeof(*set3)) };
+#else
+  int set1[] = {0, 1, 2, 3, 4, 3, 2, 1, 0, 1, 2, 3, 4, 3, 2, 1, 0, 1, 2, 3, 4, 3, 2, 1, 0, 1, 2, 3, 4, 3, 2, 1, 0};
+  int set2[] = {5, 6, 7, 8, 9, 8, 7, 6, 5, 6, 7, 8, 9, 8, 7, 6, 5, 6, 7, 8, 9, 8, 7, 6, 5, 6, 7, 8, 9, 8, 7, 6, 5};
+  int* setList[] = { set1, set2};
+  int setLengthList[] = { int((sizeof set1)/sizeof(*set1)), int((sizeof set2)/sizeof(*set2)) };
+#endif
 
 //3channel, double frequency
 #if HOW_MANY_CHANNELS == 3
@@ -160,8 +170,8 @@ DATA_P dataPoint_10 = {40,  0,   0,  0,  127, 127, 127, 90}; // empty data point
 //   dataPoint_10, dataPoint_9, dataPoint_8, dataPoint_7, dataPoint_6
 // };
 
-// sequence needed for rnd sequence start
-DATA_P sequence [] = {dataPoint_1,dataPoint_2, dataPoint_3, dataPoint_4, dataPoint_5 };
+// sequence needed for set and rnd mode, 
+DATA_P sequence [] = {dataPoint_1, dataPoint_2, dataPoint_3, dataPoint_4, dataPoint_5, dataPoint_6, dataPoint_7, dataPoint_8, dataPoint_9, dataPoint_10 };
 #else
 //3channel
 DATA_P sequence [] = {dataPoint_1, dataPoint_2, dataPoint_3, dataPoint_4};
@@ -290,18 +300,25 @@ void setup() {
   ch8P.begin(0,30000,30000,2);  // has fourth argument, to specify the higher pressure Range of the Valve in Bar
 
 
-  //add all values from set1
-  int sum=0;
-  for (int i = 0; i < set1Length; i++) {
-  sum+= set1[i];
+  //add all values from each set in setlist and check if they are sane
+  //set1 sanity check
+for (int c = 0; c < int(sizeof(setList)/sizeof(*setList)); c++) {
+  int setLength = setLengthList[c];
+  int *set = setList[c];
+  int sum = 0;
+  for (int i = 0; i < setLength; i++) {
+    sum += set[i];
   }
-  Serial.print("Sum of set1: ");
+  Serial.print("Sum of set");
+  Serial.print(c + 1);
+  Serial.print(": ");
   Serial.println(sum);
-  if (sum%10==0){
-    Serial.println("Set1 is sane");
+  if (sum % 10 == 0) {
+    Serial.println("Set is sane");
   } else {
-    Serial.println("Set1 is not sane, please check your values");
+    Serial.println("Set is not sane, please check your values");
   }
+}
 
 
 
@@ -396,14 +413,12 @@ void loop() {
             }
 
             else if (SET_MODE) {
-              
-              count=set1[set_count]; //set to first sequence step
-              //set_count++; //set to first sequence step
-              if (set_count >= set1Length) set_count = 0; //reset to first sequence step
+              int *setListPtr = setList[set_selector];
+              count = setListPtr[set_index]; //set to first sequence step
+              // count = setList[set_selector][set_index]; //set to first sequence step
             }
 
             else {
-              //count++;
               if (count >= SEQ_LNGTH) count = 0;
             }
             unsigned long timeSinceLastButton = millis() - lastButtonPressTime;
@@ -413,15 +428,13 @@ void loop() {
             ch7P.goToPressure(sequence[count].ch7_val);
             ch8P.goToPressure(sequence[count].ch8_val);    
 
+            //SERIAL OUTPUT for experimental data collection
             
-            
-            char strBuf[10];
+            char strBuf[10]; // buffer for sprintf
 
-            sprintf(strBuf, "%2d", set_count);
+            sprintf(strBuf, "%2d", set_index);
             Serial.print(strBuf);
             Serial.print(" | "); 
-            
-            
             
             sprintf(strBuf, "%5d", int(timeSinceLastButton));
             Serial.print("time (ms): ");
@@ -448,10 +461,16 @@ void loop() {
             Serial.print(" ");
             Serial.println(sequence[count].ch8_val);
   
-            //increment set_count for next sequence step
+            //increment set_index for count or next sequence step
             if (SET_MODE) {
-              set_count++; //set to first sequence step
-              if (set_count >= set1Length) set_count = 0; //reset to first sequence step
+              set_index++; //set to first sequence step
+              if (set_index >= setLengthList[set_selector]) {
+                set_index = 0; //reset to first sequence step
+                set_selector++; //increment set counter
+                if (set_selector >= int(sizeof(setList)/sizeof(*setList))) { //reset to first set
+                  set_selector = 0;
+                }
+              }
             }
             else if(RANDOMIZE_SEQUENCE_START) {
               count++;
