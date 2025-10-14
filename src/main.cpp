@@ -32,11 +32,12 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 
 #define MANUAL_MODE false // set to true to use manual mode, false to use sequencer mode
 #define RANDOMIZE_SEQUENCE_START false // set to true to randomize the sequence start, false to start with first sequence step
+
 #define SET_MODE true // set to 1 to use the set1 sequence, 0 to use the sequence array
-#define TRAINING_MODE false // set to 1 to use the training mode, 0 to use the normal mode
 
-// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
+// ################# T # R # A # I # N # I # N # G ###########################
+#define TRAINING_MODE true // set to 1 to use the training mode, 0 to use the normal mode
+// ###########################################################################
 
 
 
@@ -100,18 +101,28 @@ boolean fading  = false;
 
 
 
-#if SET_MODE
-  int set1[] = {0, 4, 2, 3, 2, 1, 2, 4, 2, 1, 4, 0, 3, 0, 1, 0, 3, 0, 1, 3, 4};
-  int set2[] = {0, 4, 3, 4, 1, 3, 1, 0, 2, 0, 3, 1, 2, 3, 4, 0, 1, 4, 2, 0, 2};
-  int set3[] = {0, 2, 4, 3, 4, 2, 1, 2, 3, 4, 1, 0, 4, 3, 1, 0, 2, 3, 0, 1, 0};
+#if SET_MODE && !TRAINING_MODE
+
+
+
+
+//p29
+int set1[] = {0, 4, 1, 3, 2, 1, 3, 1, 0, 3, 4, 3, 0, 1, 0, 2, 4, 2, 0, 4, 2};
+int set2[] = {0, 2, 4, 2, 1, 4, 1, 0, 1, 2, 1, 4, 0, 2, 3, 0, 3, 4, 3, 0, 3};
+int set3[] = {0, 2, 1, 4, 0, 2, 3, 4, 0, 2, 1, 3, 4, 2, 3, 1, 4, 1, 0, 3, 0};
+
+
+
   int* setList[] = { set1, set2, set3 };
   int setLengthList[] = { int((sizeof set1)/sizeof(*set1)), int((sizeof set2)/sizeof(*set2)), int((sizeof set3)/sizeof(*set3)) };
 #else
   int set1[] = {0, 1, 2, 3, 4, 3, 2, 1, 0, 1, 2, 3, 4, 3, 2, 1, 0, 1, 2, 3, 4, 3, 2, 1, 0, 1, 2, 3, 4, 3, 2, 1, 0};
-  int set2[] = {5, 6, 7, 8, 9, 8, 7, 6, 5, 6, 7, 8, 9, 8, 7, 6, 5, 6, 7, 8, 9, 8, 7, 6, 5, 6, 7, 8, 9, 8, 7, 6, 5};
-  int* setList[] = { set1, set2};
-  int setLengthList[] = { int((sizeof set1)/sizeof(*set1)), int((sizeof set2)/sizeof(*set2)) };
+  //int set2[] = {5, 6, 7, 8, 9, 8, 7, 6, 5, 6, 7, 8, 9, 8, 7, 6, 5, 6, 7, 8, 9, 8, 7, 6, 5, 6, 7, 8, 9, 8, 7, 6, 5};
+  int* setList[] = { set1};
+  int setLengthList[] = { int((sizeof set1)/sizeof(*set1))};
 #endif
+
+//data point structure for sequence
 
 //3channel, double frequency
 #if HOW_MANY_CHANNELS == 3
@@ -429,7 +440,7 @@ void loop() {
             ch8P.goToPressure(sequence[count].ch8_val);    
 
             //SERIAL OUTPUT for experimental data collection
-            
+            if (set_index == 0) Serial.println("");
             char strBuf[10]; // buffer for sprintf
 
             sprintf(strBuf, "%2d", set_index);
@@ -459,18 +470,22 @@ void loop() {
             Serial.print(" ");
             Serial.print(sequence[count].ch7_val);
             Serial.print(" ");
-            Serial.println(sequence[count].ch8_val);
+            Serial.print(sequence[count].ch8_val);
   
             //increment set_index for count or next sequence step
             if (SET_MODE) {
               set_index++; //set to first sequence step
               if (set_index >= setLengthList[set_selector]) {
+                Serial.print("     ROUND ");
+                Serial.print(set_selector+1);
+                Serial.print(" finished! ");
+                Serial.println("BREAK!  BREAK!  BREAK!");
                 set_index = 0; //reset to first sequence step
                 set_selector++; //increment set counter
                 if (set_selector >= int(sizeof(setList)/sizeof(*setList))) { //reset to first set
                   set_selector = 0;
                 }
-              }
+              } else Serial.print("\n");
             }
             else if(RANDOMIZE_SEQUENCE_START) {
               count++;

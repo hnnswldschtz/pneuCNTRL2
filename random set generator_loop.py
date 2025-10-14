@@ -2,6 +2,7 @@ import random
 from collections import defaultdict
 import matplotlib.pyplot as plt
 import sys
+import datetime
 
 # Cross-platform single-keypress function
 def get_keypress():
@@ -70,7 +71,7 @@ num_sequences = 30
 output_file = "sequences.txt"
 
 for i in range(num_sequences):
-    random.seed(i)  # Different seed for each sequence for variety
+    #random.seed()  # Different seed for each sequence for variety
     sequence = generate_balanced_sequence(values, iterations)
     formatted = ", ".join(str(x) for x in sequence)
     print(f"Sequence {i+1}: [{formatted}]")
@@ -89,7 +90,7 @@ for i in range(num_sequences):
     print(answer)
     if answer == 'y':
         with open(output_file, "a") as f:
-            f.write(f"int set[] = {{{formatted}}}\n")
+            f.write(f"int set[] = {{{formatted}}};\n")
         print("Sequence stored.\n")
     else:
         print("Sequence discarded.\n")
